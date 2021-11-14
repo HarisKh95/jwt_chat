@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
+use App\Http\Controllers\ChatsController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -45,4 +46,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::post('addfriend', [FriendController::class,'addfriend']);
     Route::delete('removefriend', [FriendController::class,'removefriend']);
     Route::get('viewfriend', [FriendController::class,'viewfriend']);
+
+    Route::get('messages', [ChatsController::class,'fetchMessages']);
+    Route::post('messages', [ChatsController::class,'sendMessage']);
 });
