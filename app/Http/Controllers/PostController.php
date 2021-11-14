@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Controllers\jwtController;
 use App\Models\User;
-use App\Models\post;
+use App\Models\Post;
 class PostController extends Controller
 {
 
@@ -13,7 +13,7 @@ class PostController extends Controller
     {
         $data=(new jwtController)->gettokendecode($request->bearerToken());
         $user=User::where('email','=',$data['email'])->first();
-        $post = new post;
+        $post = new Post;
         if($request->has('file'))
         {
             $post->file = $request->file;
@@ -99,7 +99,6 @@ class PostController extends Controller
         ], 201);
 
     }
-
 
     public function remove_post(Request $req)
     {

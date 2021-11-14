@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\FriendController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -33,4 +35,12 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::delete('Post_delete', [PostController::class,'remove_post']);
 
 
+    Route::post('create-comment', [CommentController::class,'commentcreate']);
+    Route::post('update-comment', [CommentController::class,'commentupdate']);
+    Route::delete('delete-comment', [CommentController::class,'commentdelete']);
+    Route::get('viewCommentpost', [CommentController::class,'commentpost']);
+
+    Route::post('addfriend', [FriendController::class,'addfriend']);
+    Route::delete('removefriend', [FriendController::class,'removefriend']);
+    Route::get('viewfriend', [FriendController::class,'viewfriend']);
 });
