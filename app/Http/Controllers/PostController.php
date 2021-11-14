@@ -6,17 +6,36 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\jwtController;
 use App\Models\User;
 use App\Models\Post;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 class PostController extends Controller
 {
+    protected $data;
+
+    /**
+     * Creates a new authenticatable user from Firebase.
+     */
+    public function __construct(Request $request)
+    {
+        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+    }
 
     public function postcreate(Request $request)
     {
-        $data=(new jwtController)->gettokendecode($request->bearerToken());
-        $user=User::where('email','=',$data['email'])->first();
+        $user=User::where('email','=',$this->data['email'])->first();
         $post = new Post;
-        if($request->has('file'))
+        if($request->has('photo'))
         {
-            $post->file = $request->file;
+            $data = $request->photo;
+
+            //get the base-64 from data
+            $base64_str = substr($data, strpos($data, ",")+1);
+
+            //decode base64 string
+            $image = base64_decode($base64_str);
+            Storage::disk('local')->put('imgage.png', $image);
+            $storagePath = Storage::disk('local')->getDriver()->getAdapter()->getPathPrefix();
+            $post->file=$storagePath.'imgage.png';
         }
         if($request->has('name') && $request->has('body'))
         {
@@ -31,15 +50,13 @@ class PostController extends Controller
         $post = $user->posts()->save($post);
 
         return response()->json([
-            'message' => 'Post created',
-            'user' => $data
+            'message' => 'Post created'
         ], 201);
     }
 
     public function showpost_public(Request $request)
     {
-        $data=(new jwtController)->gettokendecode($request->bearerToken());
-        $post=Post::where("visibile",'!=',1)->get();
+        $post=Post::where("visibile",'!=',0)->get();
 
         return response()->json([
             'message' => 'Post Public',
@@ -50,8 +67,7 @@ class PostController extends Controller
 
     public function showpost_user(Request $request)
     {
-        $data=(new jwtController)->gettokendecode($request->bearerToken());
-        $user=User::where('email','=',$data['email'])->first();
+        $user=User::where('email','=',$this->data['email'])->first();
         $posts=$user->posts()->get();
 
         return response()->json([
@@ -63,9 +79,8 @@ class PostController extends Controller
 
     public function showpost_private_user(Request $request)
     {
-        $data=(new jwtController)->gettokendecode($request->bearerToken());
-        $user=User::where('email','=',$data['email'])->first();
-        $posts=$user->posts()->where("visibile",'=',1)->get();
+        $user=User::where('email','=',$this->data['email'])->first();
+        $posts=$user->posts()->where("visibile",'!=',1)->get();
 
         return response()->json([
             'message' => 'User Private Posts',
@@ -76,8 +91,7 @@ class PostController extends Controller
 
     public function update_post(Request $req)
     {
-        $data=(new jwtController)->gettokendecode($req->bearerToken());
-        $user=User::where('email','=',$data['email'])->first();
+        $user=User::where('email','=',$this->data['email'])->first();
         $post=new Post();
         if($req->has('file'))
         {
@@ -102,8 +116,7 @@ class PostController extends Controller
 
     public function remove_post(Request $req)
     {
-        $data=(new jwtController)->gettokendecode($req->bearerToken());
-        $user=User::where('email','=',$data['email'])->first();
+        $user=User::where('email','=',$this->data['email'])->first();
         $post=$user->posts()->where("id",'=',$req->id)->delete();
         return response()->json([
             'message' => 'User selected Post deleted',

@@ -36,6 +36,7 @@ Route::group(['middleware' => ['jwt.verify']], function() {
 
 
     Route::post('create-comment', [CommentController::class,'commentcreate']);
+    Route::get('/send-notification', [NotificationController::class, 'sendCommentNotification']);
     Route::post('update-comment', [CommentController::class,'commentupdate']);
     Route::delete('delete-comment', [CommentController::class,'commentdelete']);
     Route::get('viewCommentpost', [CommentController::class,'commentpost']);
