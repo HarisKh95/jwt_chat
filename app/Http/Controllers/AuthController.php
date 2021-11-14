@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\post;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\jwtController;
+use App\Http\Requests\UserStoreRequest;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -16,17 +17,9 @@ use Illuminate\Validation\Rules\Exists;
 class AuthController extends Controller
 {
 
-    public function register(Request $request) {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|between:2,100',
-            'email' => 'required|string|email|max:100|unique:users',
-            'password' => 'required|string|confirmed|min:6',
-        ]);
+    public function register(UserStoreRequest $request) {
 
-        if($validator->fails()){
-            return response()->json($validator->errors()->toJson(), 400);
-        }
-
+        $validator=$request;
         $user = User::create(array_merge(
                     $validator->validated(),
                     ['password' =>Hash::make($request->password)]

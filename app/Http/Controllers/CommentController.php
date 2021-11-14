@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Post;
 use App\Notifications\CommentNotification;
 use App\Models\Comment;
+use App\Http\Requests\CommentStoreRequest;
 use Illuminate\Support\Facades\Notification;
 
 class CommentController extends Controller
@@ -22,7 +23,7 @@ class CommentController extends Controller
         $this->data = (new jwtController)->gettokendecode($request->bearerToken());
     }
 
-    public function commentcreate(Request $request)
+    public function commentcreate(CommentStoreRequest $request)
     {
         $commentData=[];
         $user=User::where('email',$this->data['email'])->first();

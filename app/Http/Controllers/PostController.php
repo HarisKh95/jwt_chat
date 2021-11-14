@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\jwtController;
 use App\Models\User;
 use App\Models\Post;
+use App\Http\Requests\PostStoreRequest;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 class PostController extends Controller
@@ -20,7 +21,7 @@ class PostController extends Controller
         $this->data = (new jwtController)->gettokendecode($request->bearerToken());
     }
 
-    public function postcreate(Request $request)
+    public function postcreate(PostStoreRequest $request)
     {
         $user=User::where('email','=',$this->data['email'])->first();
         $post = new Post;
@@ -68,11 +69,27 @@ class PostController extends Controller
     public function showpost_user(Request $request)
     {
         $user=User::where('email','=',$this->data['email'])->first();
-        $posts=$user->posts()->get();
-
+        $posts=$user->posts();
+        $posts=$posts->with('comments')->get();
+        $friend=$user->friends()->get();
         return response()->json([
             'message' => 'User Posts',
-            'user' => $posts
+            'user' => $posts,
+            'Friends'=>$friend
+        ], 201);
+
+    }
+
+    public function showsinglepost_user(Request $request)
+    {
+        $user=User::where('email','=',$this->data['email'])->first();
+        $posts=$user->posts();
+        $posts=$posts->where('name',$request->name)->with('comments')->get();
+        $friend=$user->friends()->get();
+        return response()->json([
+            'message' => 'User Posts',
+            'user' => $posts,
+            'Friends'=>$friend
         ], 201);
 
     }
