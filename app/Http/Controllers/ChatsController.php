@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
-
+use App\Http\Controllers\jwtController;
+use App\Service\jwtService;
 class ChatsController extends Controller
 {
 
@@ -15,7 +16,8 @@ class ChatsController extends Controller
      */
     public function __construct(Request $request)
     {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        // $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        $this->data = (new jwtService)->gettokendecode($request->bearerToken());
     }
 
     public function fetchMessages()

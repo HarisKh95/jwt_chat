@@ -22,10 +22,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::get('verifyMail/{email}', [AuthController::class, 'verify']);
-
 Route::group(['middleware' => ['jwt.verify']], function() {
     Route::post('viewUser', [AuthController::class,'list']);
     Route::post('create-post', [PostController::class,'postcreate']);
@@ -36,17 +32,4 @@ Route::group(['middleware' => ['jwt.verify']], function() {
     Route::put('Post_update', [PostController::class,'update_post']);
     Route::delete('Post_delete', [PostController::class,'remove_post']);
 
-
-    Route::post('create-comment', [CommentController::class,'commentcreate']);
-    Route::get('/send-notification', [NotificationController::class, 'sendCommentNotification']);
-    Route::post('update-comment', [CommentController::class,'commentupdate']);
-    Route::delete('delete-comment', [CommentController::class,'commentdelete']);
-    Route::get('viewCommentpost', [CommentController::class,'commentpost']);
-
-    Route::post('addfriend', [FriendController::class,'addfriend']);
-    Route::delete('removefriend', [FriendController::class,'removefriend']);
-    Route::get('viewfriend', [FriendController::class,'viewfriend']);
-
-    Route::get('messages', [ChatsController::class,'fetchMessages']);
-    Route::post('messages', [ChatsController::class,'sendMessage']);
 });

@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Http\Controllers\jwtController;
+// use App\Http\Controllers\jwtController;
+use App\Service\jwtService;
 use App\Models\User;
 use App\Models\Post;
 use App\Notifications\CommentNotification;
@@ -20,7 +21,8 @@ class CommentController extends Controller
      */
     public function __construct(Request $request)
     {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        // $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        $this->data = (new jwtService)->gettokendecode($request->bearerToken());
     }
 
     public function commentcreate(CommentStoreRequest $request)
@@ -28,11 +30,19 @@ class CommentController extends Controller
         $commentData=[];
         $user=User::where('email',$this->data['email'])->first();
         $commentData['name']=$user->name;
+        $userpost=User::where('email',$request->email)->first();
         $post=User::where('email',$request->email);
         $post=$post->first();
         $post=$post->posts();
-        $post=$post->where('id',$request->id)->first();
-        $commentData['post_id']=$post->id;
+        $post=$post->find(array('_id' =>$request->_id))->first();
+        // $post=$post->where('_id',"ObjectId(".$request->_id.")")->first();
+        if(!isset($post))
+        {
+            return response()->json([
+                'message' => 'Post Not exist'
+            ], 201);
+        }
+        $commentData['post_id']=$post->_id;
         $commentData['post_name']=$post->name;
         $comment=new Comment();
         $comment->comment=$request->comment;
@@ -40,7 +50,8 @@ class CommentController extends Controller
         $comment->user()->associate($user);
         $comment->post()->associate($post);
         $comment=$comment->save();
-        Notification::send($user, new CommentNotification($commentData));
+        // dd('hit');
+        Notification::send($userpost, new CommentNotification($commentData));
         return response()->json([
             'message' => 'Comment Created',
             'Post' => $post,
@@ -93,7 +104,7 @@ class CommentController extends Controller
             ['user_id',$user->id],
             ['post_id',$request->p_id]
             ])->get();
-        dd($comment->toArray());
+        // dd($comment->toArray());
         if(!isset($comment))
         {
             return response()->json([

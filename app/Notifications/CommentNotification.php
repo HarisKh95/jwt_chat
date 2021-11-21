@@ -29,7 +29,7 @@ class CommentNotification extends Notification
      */
     public function via($notifiable)
     {
-        return ['mail','database'];
+        return ['mail'];
     }
 
     /**
@@ -41,7 +41,7 @@ class CommentNotification extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-         ->line($this->commentData['name']." has Commented on your post".$this->commentData['post_name'])
+         ->line($this->commentData['name']." has Commented on your post ".$this->commentData['post_name'])
         ->line($this->commentData['comment'], $this->commentData['comment']);
     }
 

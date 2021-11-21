@@ -12,6 +12,7 @@ class jwtController extends Controller
     protected $payload;
     public function gettokenencode($d)
     {
+
         $this->payload=array(
             "iss" => "http://example.org",
             "aud" => "http://example.com",
@@ -19,15 +20,15 @@ class jwtController extends Controller
             "nbf" => time(),
             "data"=>$d
         );
-        $jwt = JWT::encode($this->payload, $this->key, 'HS256');
-
+        $jwt = JWT::encode($this->payload, $this->key,'HS256');
+        // dd($jwt);
         return $jwt;
     }
 
     public function gettokendecode($token)
     {
         JWT::$leeway = 60;
-        $decoded = JWT::decode($token, new Key($this->key, 'HS256'));
+        $decoded = JWT::decode($token, new Key($this->key,'HS256'));
         $decoded_array = (array) $decoded;
         $decoded_data = (array) $decoded_array['data'];
         return $decoded_data;

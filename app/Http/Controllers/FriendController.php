@@ -5,6 +5,7 @@ use App\Http\Controllers\jwtController;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Friend;
+use App\Service\jwtService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Exists;
 
@@ -17,7 +18,7 @@ class FriendController extends Controller
      */
     public function __construct(Request $request)
     {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        $this->data = (new jwtService)->gettokendecode($request->bearerToken());
     }
 
     public function addfriend(Request $request)
@@ -29,15 +30,21 @@ class FriendController extends Controller
         {
             foreach($friends as $friend)
             {
-
-                if($friend['pivot']['friend_id']==$request->id)
+                dd($friend);
+                if($friend['_id']==$request->id)
                 {
                     return response()->json([
                         'message' => 'Friend Aready exist'
                     ], 201);
                 }
+                else{
+                    return response()->json([
+                        'message' => 'No such user exist'
+                    ], 201);
+                }
             }
         }
+        // dd($user);
         $user=$user->friends()->attach([$request->id]);
         return response()->json([
             'message' => 'Friend Added'
@@ -54,7 +61,7 @@ class FriendController extends Controller
             foreach($friends as $friend)
             {
 
-                if($friend['pivot']['friend_id']==$request->id)
+                if($friend['_id']==$request->id)
                 {
                     $user=$user->friends()->detach([$request->id]);
                     return response()->json([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\jwtController;
+use App\Service\jwtService;
 use App\Models\User;
 use App\Models\Post;
 use App\Http\Requests\PostStoreRequest;
@@ -18,7 +19,8 @@ class PostController extends Controller
      */
     public function __construct(Request $request)
     {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+        $this->data = (new jwtService)->gettokendecode($request->bearerToken());
+        // $this->data = (new jwtController)->gettokendecode($request->bearerToken());
     }
 
     public function postcreate(PostStoreRequest $request)
@@ -29,14 +31,11 @@ class PostController extends Controller
         {
             $data = $request->photo;
 
-            //get the base-64 from data
-            $base64_str = substr($data, strpos($data, ",")+1);
-
             //decode base64 string
-            $image = base64_decode($base64_str);
-            Storage::disk('local')->put('imgage.png', $image);
-            $storagePath = Storage::disk('local')->getDriver()->getAdapter()->getPathPrefix();
-            $post->file=$storagePath.'imgage.png';
+            $image = base64_decode($data);
+            $imageName = Str::random(10) . '.jpg';
+            Storage::disk('local')->put($imageName, $image);
+            $post->file='storage/path/public/'.$imageName;
         }
         if($request->has('name') && $request->has('body'))
         {

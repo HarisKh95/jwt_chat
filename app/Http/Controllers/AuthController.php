@@ -9,6 +9,7 @@ use App\Models\post;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\jwtController;
 use App\Http\Requests\UserStoreRequest;
+use App\Service\jwtService;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -27,9 +28,10 @@ class AuthController extends Controller
         $mail=[
             'name'=>$request->name,
             'info'=>'Press the following link to verify your account',
-            'Verification_link'=>url('api/verifyMail/'.$request->email)
+            'Verification_link'=>url('api/user/verifyMail/'.$request->email)
         ];
-        $jwt=(new jwtController)->gettokenencode($validator->validated());
+        // $jwt=(new jwtController)->gettokenencode($validator->validated());
+        $jwt=(new jwtService)->gettokenencode($validator->validated());
         \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
         return response()->json([
             'message' => 'User successfully registered',
@@ -43,12 +45,13 @@ class AuthController extends Controller
         if($request->hasHeader('Authorization'))
         {
             try {
-            $user=(new jwtController)->gettokendecode($request->bearerToken());
+                // $user=(new jwtController)->gettokendecode($request->bearerToken());
+            $user=(new jwtService)->gettokendecode($request->bearerToken());
         } catch (Exception $e) {
             if ($e instanceof \Firebase\JWT\SignatureInvalidException){
-                return response()->json(['status' => 'Token is Invalid']);
+                return response()->error(['status' => 'Token is Invalid'],400);
             }else if ($e instanceof \Firebase\JWT\ExpiredException){
-                return response()->json(['status' => 'Token is Expired']);
+                return response()->error(['status' => 'Token is Expired'],400);
             }else{
                 return response()->json(['status' => "Authorization Token not found"]);
             }
@@ -68,21 +71,21 @@ class AuthController extends Controller
                     }
                     else
                     {
-                        return response()->json(['error' => 'Unauthorized'], 401);
+                        return response()->error(['error' => 'Unauthorized'], 401);
                     }
                 }
                 else
                 {
-                    return response()->json(['error' => 'Please verify the link first'], 401);
+                    return response()->error(['error' => 'Please verify the link first'], 401);
                 }
 
             }
             else
             {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return response()->error(['error' => 'Unauthorized'], 401);
             }
 
-            return response()->json([
+            return response()->success([
                 'message' => 'User successfully login',
                 'bearer'=>$jwt,
                 'user' => $data
@@ -109,7 +112,8 @@ class AuthController extends Controller
                         $data['name']=$authenticate[0]->name;
                         $data['email']=$authenticate[0]->email;
                         $data['password']=$user['password'];
-                        $jwt=(new jwtController)->gettokenencode($data);
+                        $jwt=(new jwtService)->gettokenencode($data);
+                        // $jwt=(new jwtController)->gettokenencode($data);
                     }
                     else
                     {
@@ -167,6 +171,13 @@ class AuthController extends Controller
     {
         $user=(new jwtController)->gettokendecode($request->bearerToken());
         $alluser=User::query()->where('email','!=',$user['email'])->get();
+        // dd($alluser);
+        if(empty($alluser->toArray()))
+        {
+            return response()->json([
+                'message' => 'Currently no user exists'
+            ], 201);
+        }
         $index=0;
         foreach($alluser as $user)
         {
