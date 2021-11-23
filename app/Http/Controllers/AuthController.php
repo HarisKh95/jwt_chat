@@ -21,30 +21,37 @@ class AuthController extends Controller
 
     public function register(UserStoreRequest $request) {
 
-        $validator=$request;
-        $user=(new Mongo)->jtchat->users->insertOne(
-            array_merge(
-                $validator->validated(),
-                ['password' =>Hash::make($request->password)],
-                ['verify' =>0]
-            ));
-        // $user = User::create(array_merge(
-        //             $validator->validated(),
-        //             ['password' =>Hash::make($request->password)]
-        //         ));
-        $mail=[
-            'name'=>$request->name,
-            'info'=>'Press the following link to verify your account',
-            'Verification_link'=>url('api/user/verifyMail/'.$request->email)
-        ];
-        // $jwt=(new jwtController)->gettokenencode($validator->validated());
-        $jwt=(new jwtService)->gettokenencode($validator->validated());
-        \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
-        return response()->json([
-            'message' => 'User successfully registered',
-            'token'=>$jwt,
-            'user' => $user
-        ], 201);
+        try{
+            $validator=$request;
+            $user=(new Mongo)->jtchat->users->insertOne(
+                array_merge(
+                    $validator->validated(),
+                    ['password' =>Hash::make($request->password)],
+                    ['verify' =>0],
+                    ['friends' =>[]]
+                ));
+            // $user = User::create(array_merge(
+            //             $validator->validated(),
+            //             ['password' =>Hash::make($request->password)]
+            //         ));
+            $mail=[
+                'name'=>$request->name,
+                'info'=>'Press the following link to verify your account',
+                'Verification_link'=>url('api/user/verifyMail/'.$request->email)
+            ];
+            // $jwt=(new jwtController)->gettokenencode($validator->validated());
+            $jwt=(new jwtService)->gettokenencode($validator->validated());
+            \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
+            return response()->success([
+                'message' => 'User successfully registered',
+                'token'=>$jwt,
+                'user' => $user
+            ], 201);
+        }catch(Exception $e)
+        {
+            return response()->error($e->getMessage());
+        }
+
     }
 
     public function login(Request $request){
@@ -54,16 +61,7 @@ class AuthController extends Controller
             try {
                 // $user=(new jwtController)->gettokendecode($request->bearerToken());
             $user=(new jwtService)->gettokendecode($request->bearerToken());
-        } catch (Exception $e) {
-            if ($e instanceof \Firebase\JWT\SignatureInvalidException){
-                return response()->error(['status' => 'Token is Invalid'],400);
-            }else if ($e instanceof \Firebase\JWT\ExpiredException){
-                return response()->error(['status' => 'Token is Expired'],400);
-            }else{
-                return response()->error(['status' => "Authorization Token not found"]);
-            }
-        }
-            // $authenticate=User::query();
+                        // $authenticate=User::query();
             // $authenticate=$authenticate->where('email',$user['email'])->get();
             $authenticate=(new Mongo)->jtchat;
             $authenticate=$authenticate->users->find(["email"=>$user['email']])->toArray();
@@ -80,18 +78,21 @@ class AuthController extends Controller
                     }
                     else
                     {
-                        return response()->error(['error' => 'Unauthorized'], 401);
+                        throw new Exception('Unauthorized');
+                        // return response()->error(['error' => 'Unauthorized'], 401);
                     }
                 }
                 else
                 {
-                    return response()->error(['error' => 'Please verify the link first'], 401);
+                    throw new Exception('Please verify the link first');
+                    // return response()->error(['error' => 'Please verify the link first'], 401);
                 }
 
             }
             else
             {
-                return response()->error(['error' => 'Unauthorized'], 401);
+                throw new Exception('Unauthorized');
+                // return response()->error(['error' => 'Unauthorized'], 401);
             }
 
             return response()->success([
@@ -99,53 +100,68 @@ class AuthController extends Controller
                 'bearer'=>$jwt,
                 'user' => $data
             ], 201);
+        } catch (Exception $e) {
+            if ($e instanceof \Firebase\JWT\SignatureInvalidException){
+                return response()->error(['status' => 'Token is Invalid'],400);
+            }else if ($e instanceof \Firebase\JWT\ExpiredException){
+                return response()->error(['status' => 'Token is Expired'],400);
+            }else{
+                return response()->error($e->getMessage());
+            }
+        }
+
         }
         else
         {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string|min:6',
-            ]);
+            try {
+                $validator = Validator::make($request->all(), [
+                    'email' => 'required|email',
+                    'password' => 'required|string|min:6',
+                ]);
 
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
-            $user=$validator->validated();
-            // $authenticate=User::query();
-            // $authenticate=$authenticate->where('email',$user['email'])->get();
-            $authenticate=(new Mongo)->jtchat;
-            $authenticate=$authenticate->users->find(["email"=>$user['email']])->toArray();
-            if(isset($authenticate))
-            {
-                if($authenticate[0]['verify']==1)
+                if ($validator->fails()) {
+                    return response()->error(json_encode($validator->errors()), 422);
+                }
+                $user=$validator->validated();
+                // $authenticate=User::query();
+                // $authenticate=$authenticate->where('email',$user['email'])->get();
+                $authenticate=(new Mongo)->jtchat;
+                $authenticate=$authenticate->users->find(["email"=>$user['email']])->toArray();
+                if(isset($authenticate))
                 {
-                    if (Hash::check($user['password'], $authenticate[0]['password'])) {
-                        $data['name']=$authenticate[0]['name'];
-                        $data['email']=$authenticate[0]['email'];
-                        $data['password']=$user['password'];
-                        $jwt=(new jwtService)->gettokenencode($data);
-                        // $jwt=(new jwtController)->gettokenencode($data);
+                    if($authenticate[0]['verify']==1)
+                    {
+                        if (Hash::check($user['password'], $authenticate[0]['password'])) {
+                            $data['name']=$authenticate[0]['name'];
+                            $data['email']=$authenticate[0]['email'];
+                            $data['password']=$user['password'];
+                            $jwt=(new jwtService)->gettokenencode($data);
+                            // $jwt=(new jwtController)->gettokenencode($data);
+                        }
+                        else
+                        {
+                            throw new Exception('Unauthorized');
+                        }
                     }
                     else
                     {
-                        return response()->error(['Message' => 'Unauthorized'], 401);
+                        throw new Exception('Please verify the link first');
                     }
+
                 }
                 else
                 {
-                    return response()->error(['Message' => 'Please verify the link first'], 401);
+                    throw new Exception('Unauthorized');
                 }
 
-            }
-            else
-            {
-                return response()->error(['Message' => 'Unauthorized'], 401);
+                return response()->success([
+                    'message' => 'User successfully login',
+                    'bearer'=>$jwt
+                ], 201);
+            } catch (Exception $e) {
+                return response()->error($e->getMessage(),401);
             }
 
-            return response()->success([
-                'message' => 'User successfully login',
-                'bearer'=>$jwt
-            ], 201);
         }
 
         return response()->error([
@@ -157,27 +173,28 @@ class AuthController extends Controller
     public function verify($email)
     {
         // if(User::where("email",$email)->value('verify') == 1)
-        $users=(new Mongo)->jtchat;
-        $user=$users->users->find(["email"=>$email])->toArray();
-        if($user[0]['verify'])
-        {
-            return response()->error([
-                'message' => 'You have already verified your account',
-            ],201);
-        }
-        else
-        {
-            if($users->users->updateOne([ 'email' => $email ],[ '$set' => [ 'verify' => 1 ]]))
+        try {
+            $users=(new Mongo)->jtchat;
+            $user=$users->users->find(["email"=>$email])->toArray();
+            if($user[0]['verify'])
             {
-                return response()->success([
-                    'message' => 'Your account is verified. ',
-                ],200);
-            }else{
-                return response()->error([
-                    'message' => 'Invalid Email. ',
-                ],201);
+                throw new Exception('You have already verified your account');
             }
+            else
+            {
+                if($users->users->updateOne([ 'email' => $email ],[ '$set' => [ 'verify' => 1 ]]))
+                {
+                    return response()->success([
+                        'message' => 'Your account is verified. ',
+                    ],200);
+                }else{
+                    throw new Exception('Invalid Email.');
+                }
+            }
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),400);
         }
+
     }
 
 }

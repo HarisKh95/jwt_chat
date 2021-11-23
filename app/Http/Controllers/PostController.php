@@ -8,6 +8,7 @@ use App\Service\jwtService;
 use App\Models\User;
 use App\Models\Post;
 use App\Http\Requests\PostStoreRequest;
+use Exception;
 use MongoDB\Client as Mongo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,6 +27,7 @@ class PostController extends Controller
 
     public function postcreate(PostStoreRequest $request)
     {
+        try {
         // $user=User::where('email','=',$this->data['email'])->first();
         $user=(new Mongo)->jtchat->users->findOne(["email"=>$this->data['email']]);
         // dd($user['_id']);
@@ -57,61 +59,79 @@ class PostController extends Controller
             // $post->visibile = $request->visible;
             $post=array_merge($post,array('visible'=>$request->visible));
         }
-        $post=array_merge($post,array('comment'=>Null));
+        $post=array_merge($post,array('comment'=>[]));
         // $post = $user->posts()->save($post);
         $user=(new Mongo)->jtchat->posts->insertOne($post);
         return response()->success([
             'message' => 'Post created'
         ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
+
     }
 
     public function showpost_public(Request $request)
     {
-        $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
-        $posts=(new Mongo)->jtchat->posts->find(
-            ['$and'=>[
-            // ['_id'=>new \MongoDB\BSON\ObjectId($req->id)],
-            ['user_id'=>(string)$user['_id']],
-            ['visible'=>'1']
-            ]]
-            )->toArray();
-        return response()->success([
-            'message' => 'User Public Posts',
-            'user' => $posts
-        ], 201);
-
+        try {
+            $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
+            $posts=(new Mongo)->jtchat->posts->find(
+                ['$and'=>[
+                // ['_id'=>new \MongoDB\BSON\ObjectId($req->id)],
+                ['user_id'=>(string)$user['_id']],
+                ['visible'=>'1']
+                ]]
+                )->toArray();
+            return response()->success([
+                'message' => 'User Public Posts',
+                'user' => $posts
+            ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
     }
 
     public function showpost_user(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $posts=$user->posts();
-        $posts=$posts->with('comments')->get();
-        $friend=$user->friends()->get();
-        return response()->json([
-            'message' => 'User Posts',
-            'user' => $posts,
-            'Friends'=>$friend
-        ], 201);
+        try {
+            $user=User::where('email','=',$this->data['email'])->first();
+            $posts=$user->posts();
+            $posts=$posts->with('comments')->get();
+            $friend=$user->friends()->get();
+            return response()->json([
+                'message' => 'User Posts',
+                'user' => $posts,
+                'Friends'=>$friend
+            ], 201);
+
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
 
     }
 
     public function showsinglepost_user(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $posts=$user->posts();
-        $posts=$posts->where('name',$request->name)->with('comments')->get();
-        $friend=$user->friends()->get();
-        return response()->json([
-            'message' => 'User Posts',
-            'user' => $posts,
-            'Friends'=>$friend
-        ], 201);
+        try {
+            $user=User::where('email','=',$this->data['email'])->first();
+            $posts=$user->posts();
+            $posts=$posts->where('name',$request->name)->with('comments')->get();
+            $friend=$user->friends()->get();
+            return response()->json([
+                'message' => 'User Posts',
+                'user' => $posts,
+                'Friends'=>$friend
+            ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
+
 
     }
 
     public function showpost_private_user(Request $request)
     {
+        try {
         // $user=User::where('email','=',$this->data['email'])->first();
         // $posts=$user->posts()->where("visibile",'!=',1)->get();
         $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
@@ -127,11 +147,16 @@ class PostController extends Controller
             'message' => 'User Private Posts',
             'user' => $posts
         ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
+
 
     }
 
     public function update_post(Request $req)
     {
+        try {
         // $user=User::where('email','=',$this->data['email'])->first();
         $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
         $post=(new Mongo)->jtchat->posts->find(
@@ -143,9 +168,7 @@ class PostController extends Controller
             // dd($req->all());
             if(!isset($post))
             {
-                return response()->error([
-                    'message' => 'Post not found',
-                ], 404);
+                throw new Exception('Post not found');
             }
 
         // $post=new Post();
@@ -180,10 +203,15 @@ class PostController extends Controller
             'message' => 'User Post Updated'
             ], 201);
 
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
+
     }
 
     public function remove_post(Request $req)
     {
+        try {
         // $user=User::where('email','=',$this->data['email'])->first();
         // $post=$user->posts()->where("id",'=',$req->id)->delete();
         $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
@@ -196,9 +224,7 @@ class PostController extends Controller
             // dd($req->all());
             if(!isset($post))
             {
-                return response()->error([
-                    'message' => 'Post not found',
-                ], 404);
+                throw new Exception('Post not found');
             }
             $post=(new Mongo)->jtchat->posts->findOneAndDelete(
                 ['$and'=>[
@@ -209,11 +235,14 @@ class PostController extends Controller
         return response()->success([
             'message' => 'User selected Post deleted'
         ], 201);
-
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
     }
 
     public function list(Request $request)
     {
+        try {
         // $user=(new jwtService)->gettokendecode($request->bearerToken());
         $users=(new Mongo)->jtchat;
         $alluser=$users->users->find(["email"=>[ '$ne'=> $this->data['email'] ]])->toArray();
@@ -221,9 +250,7 @@ class PostController extends Controller
         // dd($alluser);
         if(empty($alluser))
         {
-            return response()->error([
-                'message' => 'Currently no user exists'
-            ], 201);
+            throw new Exception('Currently no user exists');
         }
         // $index=0;
         // foreach($alluser as $user)
@@ -236,6 +263,9 @@ class PostController extends Controller
             'message' => 'All users list',
             'user' => $alluser
         ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
     }
 
 }
