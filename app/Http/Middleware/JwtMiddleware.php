@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Closure;
 use App\Service\jwtService;
+use MongoDB\Client as Mongo;
 use App\Http\Controllers\jwtController;
 use Illuminate\Http\Request;
 use Firebase\JWT\JWT;
@@ -33,8 +34,10 @@ class JwtMiddleware
             // JWT::decode($request->bearerToken(), new Key($key, 'HS256'));
             $decoded_array = (array) $decoded;
             $decoded_data = (array) $decoded_array;
-            $user=User::query();
-            $user=$user->where('email',$decoded_data['email'])->get();
+            // $user=User::query();
+            // $user=$user->where('email',$decoded_data['email'])->get();
+            $user=(new Mongo)->jtchat->users->find(['email'=>$decoded_data['email']])->toArray();
+            // dd($user);
             if(isset($user))
             {
 

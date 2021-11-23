@@ -27,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
         Response::macro('success',function($data,$status_code){
             return response()->json([
-                'success' => true,
+                'Status' => true,
                 'message' => $data,
             ],$status_code);
 
@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
 
         Response::macro('error',function($data, $status_code){
             return response()->json([
-                'success' => false,
+                'Status' => false,
                 'message' => $data
             ],$status_code);
 

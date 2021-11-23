@@ -11,6 +11,7 @@ use App\Http\Controllers\jwtController;
 use App\Http\Requests\UserStoreRequest;
 use App\Service\jwtService;
 use Exception;
+use MongoDB\Client as Mongo;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Validation\Rules\Exists;
@@ -21,10 +22,16 @@ class AuthController extends Controller
     public function register(UserStoreRequest $request) {
 
         $validator=$request;
-        $user = User::create(array_merge(
-                    $validator->validated(),
-                    ['password' =>Hash::make($request->password)]
-                ));
+        $user=(new Mongo)->jtchat->users->insertOne(
+            array_merge(
+                $validator->validated(),
+                ['password' =>Hash::make($request->password)],
+                ['verify' =>0]
+            ));
+        // $user = User::create(array_merge(
+        //             $validator->validated(),
+        //             ['password' =>Hash::make($request->password)]
+        //         ));
         $mail=[
             'name'=>$request->name,
             'info'=>'Press the following link to verify your account',
@@ -53,21 +60,23 @@ class AuthController extends Controller
             }else if ($e instanceof \Firebase\JWT\ExpiredException){
                 return response()->error(['status' => 'Token is Expired'],400);
             }else{
-                return response()->json(['status' => "Authorization Token not found"]);
+                return response()->error(['status' => "Authorization Token not found"]);
             }
         }
-            $authenticate=User::query();
-            $authenticate=$authenticate->where('email',$user['email'])->get();
+            // $authenticate=User::query();
+            // $authenticate=$authenticate->where('email',$user['email'])->get();
+            $authenticate=(new Mongo)->jtchat;
+            $authenticate=$authenticate->users->find(["email"=>$user['email']])->toArray();
             $jwt=$request->bearerToken();
             if(isset($authenticate))
             {
-                if($authenticate[0]->verify==1)
+                if($authenticate[0]['verify']==1)
                 {
-                    if (Hash::check($user['password'], $authenticate[0]->password)) {
-                        $data['id']=$authenticate[0]->id;
-                        $data['name']=$authenticate[0]->name;
-                        $data['email']=$authenticate[0]->email;
-                        $data['password']=$authenticate[0]->password;
+                    if (Hash::check($user['password'], $authenticate[0]['password'])) {
+                        $data['id']=$authenticate[0]['_id'];
+                        $data['name']=$authenticate[0]['name'];
+                        $data['email']=$authenticate[0]['email'];
+                        $data['password']=$authenticate[0]['password'];
                     }
                     else
                     {
@@ -102,43 +111,44 @@ class AuthController extends Controller
                 return response()->json($validator->errors(), 422);
             }
             $user=$validator->validated();
-            $authenticate=User::query();
-            $authenticate=$authenticate->where('email',$user['email'])->get();
+            // $authenticate=User::query();
+            // $authenticate=$authenticate->where('email',$user['email'])->get();
+            $authenticate=(new Mongo)->jtchat;
+            $authenticate=$authenticate->users->find(["email"=>$user['email']])->toArray();
             if(isset($authenticate))
             {
-                if($authenticate[0]->verify==1)
+                if($authenticate[0]['verify']==1)
                 {
-                    if (Hash::check($user['password'], $authenticate[0]->password)) {
-                        $data['name']=$authenticate[0]->name;
-                        $data['email']=$authenticate[0]->email;
+                    if (Hash::check($user['password'], $authenticate[0]['password'])) {
+                        $data['name']=$authenticate[0]['name'];
+                        $data['email']=$authenticate[0]['email'];
                         $data['password']=$user['password'];
                         $jwt=(new jwtService)->gettokenencode($data);
                         // $jwt=(new jwtController)->gettokenencode($data);
                     }
                     else
                     {
-                        return response()->json(['error' => 'Unauthorized'], 401);
+                        return response()->error(['Message' => 'Unauthorized'], 401);
                     }
                 }
                 else
                 {
-                    return response()->json(['error' => 'Please verify the link first'], 401);
+                    return response()->error(['Message' => 'Please verify the link first'], 401);
                 }
 
             }
             else
             {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return response()->error(['Message' => 'Unauthorized'], 401);
             }
 
-            return response()->json([
+            return response()->success([
                 'message' => 'User successfully login',
-                'user' => $data,
                 'bearer'=>$jwt
             ], 201);
         }
 
-        return response()->json([
+        return response()->error([
             'message' => 'login unsuccessfull. Make Sure input or token is given',
         ], 201);
 
@@ -146,50 +156,28 @@ class AuthController extends Controller
 
     public function verify($email)
     {
-        if(User::where("email",$email)->value('verify') == 1)
+        // if(User::where("email",$email)->value('verify') == 1)
+        $users=(new Mongo)->jtchat;
+        $user=$users->users->find(["email"=>$email])->toArray();
+        if($user[0]['verify'])
         {
-            return response()->json([
+            return response()->error([
                 'message' => 'You have already verified your account',
-            ],200);
+            ],201);
         }
         else
         {
-            $update=User::where("email",$email)->update(["verify"=>1]);
-            if($update){
-                return response()->json([
+            if($users->users->updateOne([ 'email' => $email ],[ '$set' => [ 'verify' => 1 ]]))
+            {
+                return response()->success([
                     'message' => 'Your account is verified. ',
                 ],200);
             }else{
-                return response()->json([
+                return response()->error([
                     'message' => 'Invalid Email. ',
-                ],200);
+                ],201);
             }
         }
     }
-
-    public function list(Request $request)
-    {
-        $user=(new jwtController)->gettokendecode($request->bearerToken());
-        $alluser=User::query()->where('email','!=',$user['email'])->get();
-        // dd($alluser);
-        if(empty($alluser->toArray()))
-        {
-            return response()->json([
-                'message' => 'Currently no user exists'
-            ], 201);
-        }
-        $index=0;
-        foreach($alluser as $user)
-        {
-            $data[$index]['name']=$user->name;
-            $data[$index]['email']=$user->email;
-            $index++;
-        }
-        return response()->json([
-            'message' => 'All users list',
-            'user' => $data
-        ], 201);
-    }
-
 
 }

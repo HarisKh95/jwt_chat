@@ -7,6 +7,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\FriendController;
 use App\Http\Controllers\ChatsController;
+use MongoDB\Client as Mongo;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -18,6 +19,11 @@ use App\Http\Controllers\ChatsController;
 |
 */
 
+
+Route::get('mongo', function(Request $request) {
+    $collection = (new Mongo)->jtchat->users;
+    return $collection->find()->toArray();
+});
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });

@@ -29,5 +29,10 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    'mongo' => [
+        'uri' => env('MONGO_URI'),
+        'uriOptions' => env('MONGO_URI_OPTIONS'),
+        'driverOptions' => env('MONGO_DRIVER_OPTIONS'),
+    ],
 
 ];

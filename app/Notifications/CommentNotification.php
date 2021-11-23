@@ -41,8 +41,9 @@ class CommentNotification extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-         ->line($this->commentData['name']." has Commented on your post ".$this->commentData['post_name'])
+         ->line($this->commentData['post_name']." has Commented on your post ".$this->commentData['post_name'])
         ->line($this->commentData['comment'], $this->commentData['comment']);
+        dd('hit');
     }
 
     /**

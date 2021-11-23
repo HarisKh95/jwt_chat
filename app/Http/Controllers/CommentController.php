@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Service\jwtService;
 use App\Models\User;
 use App\Models\Post;
+use MongoDB\Client as Mongo;
 use App\Notifications\CommentNotification;
 use App\Models\Comment;
 use App\Http\Requests\CommentStoreRequest;
@@ -27,74 +28,126 @@ class CommentController extends Controller
 
     public function commentcreate(CommentStoreRequest $request)
     {
-        $commentData=[];
-        $user=User::where('email',$this->data['email'])->first();
-        $commentData['name']=$user->name;
-        $userpost=User::where('email',$request->email)->first();
-        $post=User::where('email',$request->email);
-        $post=$post->first();
-        $post=$post->posts();
-        $post=$post->find(array('_id' =>$request->_id))->first();
+        // $commentData=[];
+        // $user=User::where('email',$this->data['email'])->first();
+        // $commentData['name']=$user->name;
+        // $userpost=User::where('email',$request->email)->first();
+        // $post=User::where('email',$request->email);
+        // $post=$post->first();
+        // $post=$post->posts();
+        // $post=$post->find(array('_id' =>$request->_id))->first();
         // $post=$post->where('_id',"ObjectId(".$request->_id.")")->first();
-        if(!isset($post))
-        {
-            return response()->json([
-                'message' => 'Post Not exist'
-            ], 201);
-        }
-        $commentData['post_id']=$post->_id;
-        $commentData['post_name']=$post->name;
-        $comment=new Comment();
-        $comment->comment=$request->comment;
-        $commentData['comment']=$request->comment;
-        $comment->user()->associate($user);
-        $comment->post()->associate($post);
-        $comment=$comment->save();
+
+        $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
+        $post=(new Mongo)->jtchat->posts->findOne(
+            ['_id'=>new \MongoDB\BSON\ObjectId($request->id)]
+            );
+            if(!isset($post))
+            {
+                return response()->error([
+                    'message' => 'Post Not exist'
+                ], 201);
+            }
+        $commentData['post_id']=$post['_id'];
+        $commentData['post_name']=$post['name'];
+        $commentData['comment']=$request['comment'];
+        $userpost=(new Mongo)->jtchat->users->findOne(['_id'=>new \MongoDB\BSON\ObjectId($post['user_id'])]);
+        $commentData['user_name']=$user['name'];
+        $post=(new Mongo)->jtchat->posts->updateOne(
+            ['_id'=>new \MongoDB\BSON\ObjectId($request->id)],
+            ['$push'=>['comment'=>
+                ['_id'=>new \MongoDB\BSON\ObjectId(),
+                 'user_id'=>$user['_id'],
+                'comment'=>$request->comment
+                ]
+                ]]
+
+            );
+        // if(!isset($post))
+        // {
+        //     return response()->json([
+        //         'message' => 'Post Not exist'
+        //     ], 201);
+        // }
+        // $commentData['post_id']=$post->_id;
+        // $commentData['post_name']=$post->name;
+        // $comment=new Comment();
+        // $comment->comment=$request->comment;
+        // $commentData['comment']=$request->comment;
+        // $comment->user()->associate($user);
+        // $comment->post()->associate($post);
+        // $comment=$comment->save();
         // dd('hit');
-        Notification::send($userpost, new CommentNotification($commentData));
-        return response()->json([
-            'message' => 'Comment Created',
-            'Post' => $post,
-            'Status'=>$comment
+        // Notification::send($userpost, new CommentNotification($commentData));
+        // Notification::send($userpost, new CommentNotification($commentData));
+        \Mail::to($userpost['email'])->send(new \App\Mail\CommentNotification($commentData));
+        return response()->success([
+            'message' => 'Comment Created'
         ], 201);
     }
 
     public function commentupdate(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        // dd($user->id);
-        $comment=Comment::where([
-            ['id',$request->id],
-            ['user_id',$user->id],
-            ['post_id',$request->p_id]
-            ])->first();
+        $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
+        $post=(new Mongo)->jtchat->posts->findOne(
+            ['$and'=>[
+                ['_id'=>new \MongoDB\BSON\ObjectId($request->id),
+                'comment._id'=>new \MongoDB\BSON\ObjectId($request->c_id),
+                'comment.user_id'=>new \MongoDB\BSON\ObjectId($user['_id'])]
+                ]]
+            );
 
-        if(!isset($comment))
-        {
-            return response()->json([
-                'message' => 'Comment Not exist',
-                'Status'=>'failed'
-            ], 201);
-        }
-        else
-        {
-            if($comment->user_id==$user->id)
+            // dd($post);
+            if(!isset($post))
             {
-                $comment->comment=$request->comment;
-                $comment->save();
-                return response()->json([
-                    'message' => 'Comment Updated',
-                    'Status'=>'Success'
+                return response()->error([
+                    'message' => 'Post Not exist'
                 ], 201);
             }
-            else
-            {
-                return response()->json([
-                    'message' => 'Not your comment',
-                    'Status'=>'failed'
+
+        $comment = (new Mongo)->jtchat->posts->updateOne(
+                ["_id"=>new \MongoDB\BSON\ObjectId($request->id),
+                "comment._id"=>new \MongoDB\BSON\ObjectId($request->c_id)],
+                ['$set'=>['comment.$.comment'=>$request->comment]]
+        );
+
+        return response()->success([
+                    'message' => 'Comment Updated'
                 ], 201);
-            }
-        }
+        // $user=User::where('email','=',$this->data['email'])->first();
+        // dd($user->id);
+        // $comment=Comment::where([
+        //     ['id',$request->id],
+        //     ['user_id',$user->id],
+        //     ['post_id',$request->p_id]
+        //     ])->first();
+
+        // if(!isset($comment))
+        // {
+        //     return response()->json([
+        //         'message' => 'Comment Not exist',
+        //         'Status'=>'failed'
+        //     ], 201);
+        // }
+        // else
+        // {
+        //     if($comment->user_id==$user->id)
+        //     {
+        //         $comment->comment=$request->comment;
+        //         $comment->save();
+        //         return response()->json([
+        //             'message' => 'Comment Updated',
+        //             'Status'=>'Success'
+        //         ], 201);
+        //     }
+        //     else
+        //     {
+        //         return response()->json([
+        //             'message' => 'Not your comment',
+        //             'Status'=>'failed'
+        //         ], 201);
+        //     }
+        // }
     }
 
     public function commentpost(Request $request)
@@ -124,37 +177,65 @@ class CommentController extends Controller
 
     public function commentdelete(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $comment=Comment::where([
-            ['id',$request->id],
-            ['user_id',$user->id],
-            ['post_id',$request->p_id]
-            ])->first();
+        $user=(new Mongo)->jtchat->users->findOne(['email'=>$this->data['email']]);
+        $post=(new Mongo)->jtchat->posts->findOne(
+            ['$and'=>[
+                ['_id'=>new \MongoDB\BSON\ObjectId($request->id),
+                'comment._id'=>new \MongoDB\BSON\ObjectId($request->c_id),
+                'comment.user_id'=>new \MongoDB\BSON\ObjectId($user['_id'])]
+                ]]
+            );
 
-        if(!isset($comment))
-        {
-            return response()->json([
-                'message' => 'Comment Not exist',
-                'Status'=>'failed'
-            ], 201);
-        }
-        else
-        {
-            if($comment->user_id==$user->id)
+            // dd($post);
+            if(!isset($post))
             {
-                $comment->delete();
-                return response()->json([
-                    'message' => 'Comment Deleted',
-                    'Status'=>'Success'
+                return response()->error([
+                    'message' => 'Post Not exist'
                 ], 201);
             }
-            else
-            {
-                return response()->json([
-                    'message' => 'Not your comment',
-                    'Status'=>'failed'
+
+        $comment = (new Mongo)->jtchat->posts->updateOne(
+                ["_id"=>new \MongoDB\BSON\ObjectId($request->id),
+                "comment._id"=>new \MongoDB\BSON\ObjectId($request->c_id)],
+                ['$pull'=>['comment'=>
+                ['_id'=>new \MongoDB\BSON\ObjectId($request->c_id)]]
+                ]
+        );
+
+        return response()->success([
+                    'message' => 'Comment Deleted'
                 ], 201);
-            }
-        }
+        // $user=User::where('email','=',$this->data['email'])->first();
+        // $comment=Comment::where([
+        //     ['id',$request->id],
+        //     ['user_id',$user->id],
+        //     ['post_id',$request->p_id]
+        //     ])->first();
+
+        // if(!isset($comment))
+        // {
+        //     return response()->json([
+        //         'message' => 'Comment Not exist',
+        //         'Status'=>'failed'
+        //     ], 201);
+        // }
+        // else
+        // {
+        //     if($comment->user_id==$user->id)
+        //     {
+        //         $comment->delete();
+        //         return response()->json([
+        //             'message' => 'Comment Deleted',
+        //             'Status'=>'Success'
+        //         ], 201);
+        //     }
+        //     else
+        //     {
+        //         return response()->json([
+        //             'message' => 'Not your comment',
+        //             'Status'=>'failed'
+        //         ], 201);
+        //     }
+        // }
     }
 }
