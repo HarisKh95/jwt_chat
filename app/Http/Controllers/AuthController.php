@@ -17,25 +17,30 @@ use Illuminate\Validation\Rules\Exists;
 class AuthController extends Controller
 {
 
-    public function register(UserStoreRequest $request) {
+    public function register(UserStoreRequest $request)
+    {
+        try {
+            $validator=$request;
+            $user = User::create(array_merge(
+                        $validator->validated(),
+                        ['password' =>Hash::make($request->password)]
+                    ));
+            $mail=[
+                'name'=>$request->name,
+                'info'=>'Press the following link to verify your account',
+                'Verification_link'=>url('api/verifyMail/'.$request->email)
+            ];
+            $jwt=(new jwtController)->gettokenencode($validator->validated());
+            \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
+            return response()->success([
+                'message' => 'User successfully registered',
+                'token'=>$jwt,
+                'user' => $user
+            ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),203);
+        }
 
-        $validator=$request;
-        $user = User::create(array_merge(
-                    $validator->validated(),
-                    ['password' =>Hash::make($request->password)]
-                ));
-        $mail=[
-            'name'=>$request->name,
-            'info'=>'Press the following link to verify your account',
-            'Verification_link'=>url('api/verifyMail/'.$request->email)
-        ];
-        $jwt=(new jwtController)->gettokenencode($validator->validated());
-        \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
-        return response()->json([
-            'message' => 'User successfully registered',
-            'token'=>$jwt,
-            'user' => $user
-        ], 201);
     }
 
     public function login(Request $request){
@@ -44,15 +49,6 @@ class AuthController extends Controller
         {
             try {
             $user=(new jwtController)->gettokendecode($request->bearerToken());
-        } catch (Exception $e) {
-            if ($e instanceof \Firebase\JWT\SignatureInvalidException){
-                return response()->json(['status' => 'Token is Invalid']);
-            }else if ($e instanceof \Firebase\JWT\ExpiredException){
-                return response()->json(['status' => 'Token is Expired']);
-            }else{
-                return response()->json(['status' => "Authorization Token not found"]);
-            }
-        }
             $authenticate=User::query();
             $authenticate=$authenticate->where('email',$user['email'])->get();
             $jwt=$request->bearerToken();
@@ -68,73 +64,93 @@ class AuthController extends Controller
                     }
                     else
                     {
-                        return response()->json(['error' => 'Unauthorized'], 401);
+                        throw new Exception('Unauthorized');
                     }
                 }
                 else
                 {
-                    return response()->json(['error' => 'Please verify the link first'], 401);
+                    throw new Exception('Please verify the link first');
                 }
 
             }
             else
             {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                throw new Exception('Unauthorized');
             }
 
-            return response()->json([
+            return response()->success([
                 'message' => 'User successfully login',
                 'bearer'=>$jwt,
                 'user' => $data
             ], 201);
+        } catch (Exception $e) {
+            if ($e instanceof \Firebase\JWT\SignatureInvalidException){
+                return response()->error(['status' => 'Token is Invalid'],401);
+            }else if ($e instanceof \Firebase\JWT\ExpiredException){
+                return response()->error(['status' => 'Token is Expired'],401);
+            }else{
+                return response()->error($e->getMessage(),401);
+            }
+        }
+
         }
         else
         {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string|min:6',
-            ]);
+            try {
+                $validator = Validator::make($request->all(), [
+                    'email' => 'required|email',
+                    'password' => 'required|string|min:6',
+                ]);
 
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
-            $user=$validator->validated();
-            $authenticate=User::query();
-            $authenticate=$authenticate->where('email',$user['email'])->get();
-            if(isset($authenticate))
-            {
-                if($authenticate[0]->verify==1)
+                if ($validator->fails()) {
+                    return response()->json($validator->errors(), 422);
+                }
+                $user=$validator->validated();
+                $authenticate=User::query();
+                $authenticate=$authenticate->where('email',$user['email'])->get();
+                if(isset($authenticate))
                 {
-                    if (Hash::check($user['password'], $authenticate[0]->password)) {
-                        $data['name']=$authenticate[0]->name;
-                        $data['email']=$authenticate[0]->email;
-                        $data['password']=$user['password'];
-                        $jwt=(new jwtController)->gettokenencode($data);
+                    if($authenticate[0]->verify==1)
+                    {
+                        if (Hash::check($user['password'], $authenticate[0]->password)) {
+                            $data['name']=$authenticate[0]->name;
+                            $data['email']=$authenticate[0]->email;
+                            $data['password']=$user['password'];
+                            $jwt=(new jwtController)->gettokenencode($data);
+                        }
+                        else
+                        {
+                            throw new Exception('Unauthorized');
+                        }
                     }
                     else
                     {
-                        return response()->json(['error' => 'Unauthorized'], 401);
+                        throw new Exception('Please verify the link first');
                     }
+
                 }
                 else
                 {
-                    return response()->json(['error' => 'Please verify the link first'], 401);
+                    throw new Exception('Unauthorized');
                 }
 
+                return response()->success([
+                    'message' => 'User successfully login',
+                    'user' => $data,
+                    'bearer'=>$jwt
+                ], 201);
+            } catch (Exception $e) {
+                if ($e instanceof \Firebase\JWT\SignatureInvalidException){
+                    return response()->error('Token is Invalid',401);
+                }else if ($e instanceof \Firebase\JWT\ExpiredException){
+                    return response()->error('Token is Expired',401);
+                }else{
+                    return response()->error($e->getMessage(),401);
+                }
             }
-            else
-            {
-                return response()->json(['error' => 'Unauthorized'], 401);
-            }
-
-            return response()->json([
-                'message' => 'User successfully login',
-                'user' => $data,
-                'bearer'=>$jwt
-            ], 201);
         }
 
-        return response()->json([
+        return response()->error([
             'message' => 'login unsuccessfull. Make Sure input or token is given',
         ], 201);
 
@@ -142,42 +158,46 @@ class AuthController extends Controller
 
     public function verify($email)
     {
-        if(User::where("email",$email)->value('verify') == 1)
-        {
-            return response()->json([
-                'message' => 'You have already verified your account',
-            ],200);
-        }
-        else
-        {
-            $update=User::where("email",$email)->update(["verify"=>1]);
-            if($update){
-                return response()->json([
-                    'message' => 'Your account is verified. ',
-                ],200);
-            }else{
-                return response()->json([
-                    'message' => 'Invalid Email. ',
-                ],200);
+        try {
+            if(User::where("email",$email)->value('verify') == 1)
+            {
+                throw new Exception('You have already verified your account');
             }
+            else
+            {
+                $update=User::where("email",$email)->update(["verify"=>1]);
+                if($update){
+                    throw new Exception('Your account is verified.');
+                }else{
+                    throw new Exception('Invalid Email. ');
+                }
+            }
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),200);
         }
+
     }
 
     public function list(Request $request)
     {
-        $user=(new jwtController)->gettokendecode($request->bearerToken());
-        $alluser=User::query()->where('email','!=',$user['email'])->get();
-        $index=0;
-        foreach($alluser as $user)
-        {
-            $data[$index]['name']=$user->name;
-            $data[$index]['email']=$user->email;
-            $index++;
+        try {
+            $user=(new jwtController)->gettokendecode($request->bearerToken());
+            $alluser=User::query()->where('email','!=',$user['email'])->get();
+            $index=0;
+            foreach($alluser as $user)
+            {
+                $data[$index]['name']=$user->name;
+                $data[$index]['email']=$user->email;
+                $index++;
+            }
+            return response()->json([
+                'message' => 'All users list',
+                'user' => $data
+            ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),404);
         }
-        return response()->json([
-            'message' => 'All users list',
-            'user' => $data
-        ], 201);
+
     }
 
 

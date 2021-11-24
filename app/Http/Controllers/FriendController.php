@@ -5,6 +5,7 @@ use App\Http\Controllers\jwtController;
 use App\Models\User;
 use App\Models\Post;
 use App\Models\Friend;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Exists;
 
@@ -22,59 +23,70 @@ class FriendController extends Controller
 
     public function addfriend(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $userf=$user->friends()->get();
-        $friends=$userf->toArray();
-        if(!empty($friends))
-        {
-            foreach($friends as $friend)
+        try {
+            $user=User::where('email','=',$this->data['email'])->first();
+            $userf=$user->friends()->get();
+            $friends=$userf->toArray();
+            if(!empty($friends))
             {
-
-                if($friend['pivot']['friend_id']==$request->id)
+                foreach($friends as $friend)
                 {
-                    return response()->json([
-                        'message' => 'Friend Aready exist'
-                    ], 201);
+
+                    if($friend['pivot']['friend_id']==$request->id)
+                    {
+                        return response()->error([
+                            'message' => 'Friend Aready exist'
+                        ], 201);
+                    }
                 }
             }
+            $user=$user->friends()->attach([$request->id]);
+            return response()->success([
+                'message' => 'Friend Added'
+            ],200);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),406);
         }
-        $user=$user->friends()->attach([$request->id]);
-        return response()->json([
-            'message' => 'Friend Added'
-        ], 201);
+
     }
 
     public function removefriend(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $userf=$user->friends()->get();
-        $friends=$userf->toArray();
-        if(!empty($friends))
-        {
-            foreach($friends as $friend)
+        try {
+            $user=User::where('email','=',$this->data['email'])->first();
+            $userf=$user->friends()->get();
+            $friends=$userf->toArray();
+            if(!empty($friends))
             {
-
-                if($friend['pivot']['friend_id']==$request->id)
+                foreach($friends as $friend)
                 {
-                    $user=$user->friends()->detach([$request->id]);
-                    return response()->json([
-                        'message' => 'Friend remove successfully'
-                    ], 201);
+
+                    if($friend['pivot']['friend_id']==$request->id)
+                    {
+                        $user=$user->friends()->detach([$request->id]);
+                        return response()->json([
+                            'message' => 'Friend remove successfully'
+                        ], 201);
+                    }
                 }
             }
+            throw new Exception('Friend not exist');
+
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),404);
         }
 
-        return response()->json([
-            'message' => 'Friend not exist'
-        ], 201);
     }
 
     public function viewfriend(Request $request)
     {
-        $user=User::where('email','=',$this->data['email'])->first();
-        $user=$user->friends()->get();
-        dd($user->toArray());
+        try {
+            $user=User::where('email','=',$this->data['email'])->first();
+            $user=$user->friends()->get();
+            dd($user->toArray());
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),404);
+        }
+
     }
-
-
 }

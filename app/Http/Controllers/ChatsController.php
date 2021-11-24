@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
-
+use Exception;
 class ChatsController extends Controller
 {
 
@@ -20,7 +20,12 @@ class ChatsController extends Controller
 
     public function fetchMessages()
     {
-      return Message::with('user')->get();
+        try {
+            return Message::with('user')->get();
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),406);
+        }
+
     }
     /**
      * Persist message to database
@@ -30,14 +35,19 @@ class ChatsController extends Controller
      */
     public function sendMessage(Request $request)
     {
-    $user=User::where('email',$this->data['email'])->first();
-    $message = $user->messages()->create([
-        'message' => $request->message,
-        'reciever_id'=>$request->id
-    ])->save();
+        try {
+            $user=User::where('email',$this->data['email'])->first();
+            $message = $user->messages()->create([
+                'message' => $request->message,
+                'reciever_id'=>$request->id
+            ])->save();
 
-    return response()->json([
-        'message' => 'Message Sent'
-    ], 201);
+            return response()->json([
+                'message' => 'Message Sent'
+            ], 200);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(),406);
+        }
+
     }
 }

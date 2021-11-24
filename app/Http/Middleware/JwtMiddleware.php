@@ -31,31 +31,35 @@ class JwtMiddleware
             $decoded_data = (array) $decoded_array['data'];
             $user=User::query();
             $user=$user->where('email',$decoded_data['email'])->get();
-            if($user[0]->verify==1)
+            if(isset($user))
             {
-                if(!isset($user))
+
+                if($user[0]->verify==1)
                 {
-                    return response()->json(['status' => 'Not a valid user token']);
+
+                    if (!Hash::check($decoded_data['password'], $user[0]->password)) {
+                        throw new Exception('Not a valid user token');
+                    }
+
                 }
                 else
                 {
-                    if (!Hash::check($decoded_data['password'], $user[0]->password)) {
-                        return response()->json(['status' => 'Not a valid user token']);
-                    }
+
+                    throw new Exception('Please verify the link first');
                 }
             }
             else
             {
-                return response()->json(['error' => 'Please verify the link first'], 401);
-            }
 
+                throw new Exception('Not a valid user token');
+            }
         } catch (Exception $e) {
             if ($e instanceof \Firebase\JWT\SignatureInvalidException){
-                return response()->json(['status' => 'Token is Invalid']);
+                return response()->error('Token is Invalid',401);
             }else if ($e instanceof \Firebase\JWT\ExpiredException){
-                return response()->json(['status' => 'Token is Expired']);
+                return response()->error('Token is Expired',401);
             }else{
-                return response()->json(['status' => "Authorization Token not found"]);
+                return response()->error($e->getMessage(),401);
             }
         }
         return $next($request);
