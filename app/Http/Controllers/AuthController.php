@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\post;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\jwtController;
+use App\Service\jwtService;
 use App\Http\Requests\UserStoreRequest;
 use Exception;
 use Firebase\JWT\JWT;
@@ -28,10 +29,11 @@ class AuthController extends Controller
             $mail=[
                 'name'=>$request->name,
                 'info'=>'Press the following link to verify your account',
-                'Verification_link'=>url('api/verifyMail/'.$request->email)
+                'Verification_link'=>url('api/user/verifyMail/'.$request->email)
             ];
-            $jwt=(new jwtController)->gettokenencode($validator->validated());
-            \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
+            $jwt=(new jwtService)->gettokenencode($validator->validated());
+            // \Mail::to($request->email)->send(new \App\Mail\NewMail($mail));
+            dispatch(new \App\Jobs\SendEmailVerify($request->email,$mail));
             return response()->success([
                 'message' => 'User successfully registered',
                 'token'=>$jwt,
@@ -48,7 +50,7 @@ class AuthController extends Controller
         if($request->hasHeader('Authorization'))
         {
             try {
-            $user=(new jwtController)->gettokendecode($request->bearerToken());
+            $user=(new jwtService)->gettokendecode($request->bearerToken());
             $authenticate=User::query();
             $authenticate=$authenticate->where('email',$user['email'])->get();
             $jwt=$request->bearerToken();
@@ -116,7 +118,7 @@ class AuthController extends Controller
                             $data['name']=$authenticate[0]->name;
                             $data['email']=$authenticate[0]->email;
                             $data['password']=$user['password'];
-                            $jwt=(new jwtController)->gettokenencode($data);
+                            $jwt=(new jwtService)->gettokenencode($data);
                         }
                         else
                         {
@@ -181,7 +183,7 @@ class AuthController extends Controller
     public function list(Request $request)
     {
         try {
-            $user=(new jwtController)->gettokendecode($request->bearerToken());
+            $user=(new jwtService)->gettokendecode($request->bearerToken());
             $alluser=User::query()->where('email','!=',$user['email'])->get();
             $index=0;
             foreach($alluser as $user)

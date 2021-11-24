@@ -8,15 +8,15 @@ use Exception;
 class ChatsController extends Controller
 {
 
-    protected $data;
+    // protected $data;
 
     /**
      * Creates a new authenticatable user from Firebase.
      */
-    public function __construct(Request $request)
-    {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
-    }
+    // public function __construct(Request $request)
+    // {
+    //     $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+    // }
 
     public function fetchMessages()
     {
@@ -36,7 +36,7 @@ class ChatsController extends Controller
     public function sendMessage(Request $request)
     {
         try {
-            $user=User::where('email',$this->data['email'])->first();
+            $user=User::where('email',$request->data['email'])->first();
             $message = $user->messages()->create([
                 'message' => $request->message,
                 'reciever_id'=>$request->id

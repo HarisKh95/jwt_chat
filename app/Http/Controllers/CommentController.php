@@ -14,20 +14,20 @@ use Illuminate\Support\Facades\Notification;
 
 class CommentController extends Controller
 {
-    protected $data;
+    // protected $data;
     /**
      * Creates a new authenticatable user from Firebase.
      */
-    public function __construct(Request $request)
-    {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
-    }
+    // public function __construct(Request $request)
+    // {
+    //     $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+    // }
 
     public function commentcreate(CommentStoreRequest $request)
     {
         try {
             $commentData=[];
-            $user=User::where('email',$this->data['email'])->first();
+            $user=User::where('email',$request->data['email'])->first();
             $commentData['name']=$user->name;
             $post=User::where('email',$request->email);
             $post=$post->first();
@@ -55,7 +55,7 @@ class CommentController extends Controller
     public function commentupdate(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             // dd($user->id);
             $comment=Comment::where([
                 ['id',$request->id],
@@ -91,7 +91,7 @@ class CommentController extends Controller
     public function commentpost(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $comment=Comment::where([
                 ['user_id',$user->id],
                 ['post_id',$request->p_id]
@@ -116,7 +116,7 @@ class CommentController extends Controller
     public function commentdelete(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $comment=Comment::where([
                 ['id',$request->id],
                 ['user_id',$user->id],

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Closure;
 use Illuminate\Http\Request;
+use App\Service\jwtService;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Exception;
@@ -23,21 +24,23 @@ class JwtMiddleware
     public function handle(Request $request, Closure $next)
     {
 
-        $key = "example_key";
-        JWT::$leeway = 60;
+        // $key = "example_key";
+        // JWT::$leeway = 60;
         try {
-            $decoded = JWT::decode($request->bearerToken(), new Key($key, 'HS256'));
-            $decoded_array = (array) $decoded;
-            $decoded_data = (array) $decoded_array['data'];
+            $decoded = (new jwtService)->gettokendecode($request->bearerToken());
+            // $decoded = JWT::decode($request->bearerToken(), new Key($key, 'HS256'));
+            // $decoded_array = (array) $decoded;
+            // $decoded_data = (array) $decoded_array['data'];
+
             $user=User::query();
-            $user=$user->where('email',$decoded_data['email'])->get();
+            $user=$user->where('email',$decoded['email'])->first();
             if(isset($user))
             {
 
-                if($user[0]->verify==1)
+                if($user->verify==1)
                 {
 
-                    if (!Hash::check($decoded_data['password'], $user[0]->password)) {
+                    if (!Hash::check($decoded['password'], $user->password)) {
                         throw new Exception('Not a valid user token');
                     }
 
@@ -62,6 +65,7 @@ class JwtMiddleware
                 return response()->error($e->getMessage(),401);
             }
         }
+        $request=$request->merge(array("data" => $decoded));
         return $next($request);
     }
 }

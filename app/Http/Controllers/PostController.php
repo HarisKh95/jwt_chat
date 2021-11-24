@@ -6,25 +6,26 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\jwtController;
 use App\Models\User;
 use App\Models\Post;
+use App\Service\jwtService;
 use App\Http\Requests\PostStoreRequest;
 use Exception;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 class PostController extends Controller
 {
-    protected $data;
+    // protected $data;
     /**
      * Creates a new authenticatable user from Firebase.
      */
-    public function __construct(Request $request)
-    {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
-    }
+    // public function __construct(Request $request)
+    // {
+    //     $this->data = (new jwtService)->gettokendecode($request->bearerToken());
+    // }
 
     public function postcreate(PostStoreRequest $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $post = new Post;
             if($request->has('photo'))
             {
@@ -77,7 +78,7 @@ class PostController extends Controller
     public function showpost_user(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $posts=$user->posts();
             $posts=$posts->with('comments')->get();
             $friend=$user->friends()->get();
@@ -96,7 +97,7 @@ class PostController extends Controller
     public function showsinglepost_user(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $posts=$user->posts();
             $posts=$posts->where('name',$request->name)->with('comments')->get();
             $friend=$user->friends()->get();
@@ -115,7 +116,7 @@ class PostController extends Controller
     public function showpost_private_user(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $posts=$user->posts()->where("visibile",'!=',1)->get();
             return response()->success([
                 'message' => 'User Private Posts',
@@ -129,7 +130,7 @@ class PostController extends Controller
     public function update_post(Request $req)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$req->data['email'])->first();
             $post=new Post();
             if($req->has('file'))
             {
@@ -159,7 +160,7 @@ class PostController extends Controller
     public function remove_post(Request $req)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$req->data['email'])->first();
             $post=$user->posts()->where("id",'=',$req->id)->delete();
             return response()->success([
                 'message' => 'User selected Post deleted',

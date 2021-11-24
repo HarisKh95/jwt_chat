@@ -11,20 +11,20 @@ use Illuminate\Validation\Rules\Exists;
 
 class FriendController extends Controller
 {
-    protected $data;
+    // protected $data;
 
     /**
      * Creates a new authenticatable user from Firebase.
      */
-    public function __construct(Request $request)
-    {
-        $this->data = (new jwtController)->gettokendecode($request->bearerToken());
-    }
+    // public function __construct(Request $request)
+    // {
+    //     $this->data = (new jwtController)->gettokendecode($request->bearerToken());
+    // }
 
     public function addfriend(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $userf=$user->friends()->get();
             $friends=$userf->toArray();
             if(!empty($friends))
@@ -34,9 +34,7 @@ class FriendController extends Controller
 
                     if($friend['pivot']['friend_id']==$request->id)
                     {
-                        return response()->error([
-                            'message' => 'Friend Aready exist'
-                        ], 201);
+                        throw new Exception('Friend Aready exist');
                     }
                 }
             }
@@ -53,7 +51,7 @@ class FriendController extends Controller
     public function removefriend(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $userf=$user->friends()->get();
             $friends=$userf->toArray();
             if(!empty($friends))
@@ -64,9 +62,9 @@ class FriendController extends Controller
                     if($friend['pivot']['friend_id']==$request->id)
                     {
                         $user=$user->friends()->detach([$request->id]);
-                        return response()->json([
+                        return response()->success([
                             'message' => 'Friend remove successfully'
-                        ], 201);
+                        ], 200);
                     }
                 }
             }
@@ -81,7 +79,7 @@ class FriendController extends Controller
     public function viewfriend(Request $request)
     {
         try {
-            $user=User::where('email','=',$this->data['email'])->first();
+            $user=User::where('email','=',$request->data['email'])->first();
             $user=$user->friends()->get();
             dd($user->toArray());
         } catch (Exception $e) {
