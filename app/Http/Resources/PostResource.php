@@ -24,7 +24,7 @@ class PostResource extends JsonResource
             'visible' => $this->visibile,
             'created_at' => (string) $this->created_at,
             'updated_at' => (string) $this->updated_at,
-            'Comments'=> CommentResource::collection($this->comments()->get())
+            'Comments'=>CommentResource::collection($this->comments()->get())
 
           ];
     }
