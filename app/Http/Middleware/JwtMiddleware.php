@@ -45,7 +45,7 @@ class JwtMiddleware
                 }
                 else
                 {
-                    throw new Exception('Please verify the link first');
+                    throw new Exception('Please verify the mail first');
                 }
             }
             else

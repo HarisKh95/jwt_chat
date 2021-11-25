@@ -30,6 +30,7 @@ class CommentController extends Controller
             $user=User::where('email',$request->data['email'])->first();
             $commentData['name']=$user->name;
             $post=User::where('email',$request->email);
+            // return response()->json($post);
             $post=$post->first();
             $post=$post->posts();
             $post=$post->where('id',$request->id)->first();
