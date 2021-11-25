@@ -13,6 +13,7 @@ use App\Http\Requests\UserStoreRequest;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use App\Http\Resources\UserResource;
 use Illuminate\Validation\Rules\Exists;
 
 class AuthController extends Controller
@@ -37,7 +38,7 @@ class AuthController extends Controller
             return response()->success([
                 'message' => 'User successfully registered',
                 'token'=>$jwt,
-                'user' => $user
+                'user' => new UserResource($user)
             ], 201);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),203);
@@ -52,17 +53,17 @@ class AuthController extends Controller
             try {
             $user=(new jwtService)->gettokendecode($request->bearerToken());
             $authenticate=User::query();
-            $authenticate=$authenticate->where('email',$user['email'])->get();
+            $authenticate=$authenticate->where('email',$user['email'])->first();
             $jwt=$request->bearerToken();
             if(isset($authenticate))
             {
-                if($authenticate[0]->verify==1)
+                if($authenticate->verify==1)
                 {
-                    if (Hash::check($user['password'], $authenticate[0]->password)) {
-                        $data['id']=$authenticate[0]->id;
-                        $data['name']=$authenticate[0]->name;
-                        $data['email']=$authenticate[0]->email;
-                        $data['password']=$authenticate[0]->password;
+                    if (Hash::check($user['password'], $authenticate->password)) {
+                        $data['id']=$authenticate->id;
+                        $data['name']=$authenticate->name;
+                        $data['email']=$authenticate->email;
+                        $data['password']=$authenticate->password;
                     }
                     else
                     {
@@ -83,7 +84,7 @@ class AuthController extends Controller
             return response()->success([
                 'message' => 'User successfully login',
                 'bearer'=>$jwt,
-                'user' => $data
+                'user' => new UserResource($authenticate)
             ], 201);
         } catch (Exception $e) {
             if ($e instanceof \Firebase\JWT\SignatureInvalidException){
@@ -109,14 +110,15 @@ class AuthController extends Controller
                 }
                 $user=$validator->validated();
                 $authenticate=User::query();
-                $authenticate=$authenticate->where('email',$user['email'])->get();
+                $authenticate=$authenticate->where('email',$user['email'])->first();
+
                 if(isset($authenticate))
                 {
-                    if($authenticate[0]->verify==1)
+                    if($authenticate->verify==1)
                     {
-                        if (Hash::check($user['password'], $authenticate[0]->password)) {
-                            $data['name']=$authenticate[0]->name;
-                            $data['email']=$authenticate[0]->email;
+                        if (Hash::check($user['password'], $authenticate->password)) {
+                            $data['name']=$authenticate->name;
+                            $data['email']=$authenticate->email;
                             $data['password']=$user['password'];
                             $jwt=(new jwtService)->gettokenencode($data);
                         }
@@ -138,7 +140,7 @@ class AuthController extends Controller
 
                 return response()->success([
                     'message' => 'User successfully login',
-                    'user' => $data,
+                    'user' => new UserResource($authenticate),
                     'bearer'=>$jwt
                 ], 201);
             } catch (Exception $e) {
@@ -180,27 +182,17 @@ class AuthController extends Controller
 
     }
 
-    public function list(Request $request)
+    public function list()
     {
         try {
-            $user=(new jwtService)->gettokendecode($request->bearerToken());
-            $alluser=User::query()->where('email','!=',$user['email'])->get();
-            $index=0;
-            foreach($alluser as $user)
-            {
-                $data[$index]['name']=$user->name;
-                $data[$index]['email']=$user->email;
-                $index++;
-            }
             return response()->json([
                 'message' => 'All users list',
-                'user' => $data
+                'user' => UserResource::collection(User::get())
             ], 201);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),404);
         }
 
     }
-
 
 }

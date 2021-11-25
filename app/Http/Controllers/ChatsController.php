@@ -42,7 +42,7 @@ class ChatsController extends Controller
                 'reciever_id'=>$request->id
             ])->save();
 
-            return response()->json([
+            return response()->success([
                 'message' => 'Message Sent'
             ], 200);
         } catch (Exception $e) {

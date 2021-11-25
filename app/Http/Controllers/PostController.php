@@ -11,6 +11,8 @@ use App\Http\Requests\PostStoreRequest;
 use Exception;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Http\Resources\UserResource;
+use App\Http\Resources\PostResource;
 class PostController extends Controller
 {
     // protected $data;
@@ -53,8 +55,9 @@ class PostController extends Controller
 
             $post = $user->posts()->save($post);
 
-            return response()->json([
-                'message' => 'Post created'
+            return response()->success([
+                'message' => 'Post created',
+                'post' => new PostResource($post)
             ], 201);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),406);
@@ -68,7 +71,7 @@ class PostController extends Controller
 
             return response()->success([
                 'message' => 'Post Public',
-                'user' => $post->toArray()
+                'post' => PostResource::collection($post)
             ], 200);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),404);
@@ -120,7 +123,7 @@ class PostController extends Controller
             $posts=$user->posts()->where("visibile",'!=',1)->get();
             return response()->success([
                 'message' => 'User Private Posts',
-                'user' => $posts
+                'post' => PostResource::collection($posts)
             ], 200);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),404);
@@ -145,10 +148,11 @@ class PostController extends Controller
             {
                 $post->visibile = $req->visible;
             }
-            $post=$user->posts()->where('id',$req->id)->update($post->toArray());
+            $post1=$user->posts()->where('id',$req->id)->update($post->toArray());
+            $post=$user->posts()->where('id',$req->id)->first();
             return response()->success([
                 'message' => 'User Post Updated',
-                'status' => $post
+                'post' => new PostResource($post)
             ], 200);
         } catch (Exception $e) {
             return response()->error($e->getMessage(),404);
@@ -170,4 +174,23 @@ class PostController extends Controller
             return response()->error($e->getMessage(),404);
         }
     }
+
+    public function list(Request $req)
+    {
+        try {
+
+        $user=User::query()->where('email','!=',$req->data['email'])->first();
+        if(empty($user))
+        {
+            throw new Exception('Currently no user exists');
+        }
+        return response()->success([
+            'message' => 'All users list',
+            'user' => new UserResource($user)
+        ], 201);
+        } catch (Exception $e) {
+            return response()->error($e->getMessage(), 401);
+        }
+    }
 }
+

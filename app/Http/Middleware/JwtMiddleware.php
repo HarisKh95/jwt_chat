@@ -39,21 +39,17 @@ class JwtMiddleware
 
                 if($user->verify==1)
                 {
-
                     if (!Hash::check($decoded['password'], $user->password)) {
                         throw new Exception('Not a valid user token');
                     }
-
                 }
                 else
                 {
-
                     throw new Exception('Please verify the link first');
                 }
             }
             else
             {
-
                 throw new Exception('Not a valid user token');
             }
         } catch (Exception $e) {
